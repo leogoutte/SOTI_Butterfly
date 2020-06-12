@@ -1,6 +1,6 @@
 # tools for SOTI butterfly plots and analysis
 
-import numpy as np
+from numpy import *
 from scipy.linalg import block_diag
 import matplotlib.pyplot as plt
 import scipy.sparse.linalg as spars
@@ -11,16 +11,23 @@ def sig(n):
     # pauli matrices
     # n = 0 is identity, n = 1,2,3 is x,y,z resp.
     if n == 0:
-        a = np.identity(2, dtype = complex)
+        a = identity(2, dtype = complex)
     if n == 1:
-        a = np.array([[0 , 1],[1 , 0]], dtype = complex)
+        a = array([[0 , 1],[1 , 0]], dtype = complex)
     if n == 2:
-        a = np.array([[0 , -1j],[1j , 0]], dtype = complex)
+        a = array([[0 , -1j],[1j , 0]], dtype = complex)
     if n == 3:
-        a = np.array([[1 , 0],[0 , -1]], dtype = complex)
+        a = array([[1 , 0],[0 , -1]], dtype = complex)
     return a
 
-# harper matrice
+# define kroneckers of pauli matrices
+s0_ty = kron(sig(0),sig(2))
+s0_tz = kron(sig(0),sig(3))
+sx_tx = kron(sig(1),sig(1))
+sy_tx = kron(sig(2),sig(1))
+sz_tx = kron(sig(3),sig(1))
+
+# harper matrix
 def Harper_SOTI(p, q, mu = 0, nu = 0, zu = 0, M = 2.3, D1 = 0.8, D2 = 0.5):
     # comment later
     # all energies are in units of |t|
@@ -28,21 +35,14 @@ def Harper_SOTI(p, q, mu = 0, nu = 0, zu = 0, M = 2.3, D1 = 0.8, D2 = 0.5):
     # size
     iq = int(q)
     
-    # define kroneckers of pauli matrices
-    s0_ty = np.kron(sig(0),sig(2))
-    s0_tz = np.kron(sig(0),sig(3))
-    sx_tx = np.kron(sig(1),sig(1))
-    sy_tx = np.kron(sig(2),sig(1))
-    sz_tx = np.kron(sig(3),sig(1))
-    
     # make block diagonals (same-site-hoppers)
-    diags = M*s0_tz + s0_tz*np.cos(mu) + D1*sx_tx*np.sin(mu) + D2*s0_ty*np.cos(mu)
-    diags_q = block_diag(*([diags]*iq)) # np.kron could be replaced by 
-                                            # np.block_diag for large q
+    diags = M*s0_tz + s0_tz*cos(mu) + D1*sx_tx*sin(mu) + D2*s0_ty*cos(mu)
+    diags_q = block_diag(*([diags]*iq)) # kron could be replaced by 
+                                            # block_diag for large q
         
-    cos_ms = [np.cos(2*np.pi*(p/q)*m - zu) for m in range(iq)] # <- could be mistake here
-    sin_ms = [np.sin(2*np.pi*(p/q)*m - zu) for m in range(iq)]
-    diags_ms = np.kron(np.diag(cos_ms),s0_tz) + D1*np.kron(np.diag(sin_ms),sz_tx)
+    cos_ms = [cos(2*pi*(p/q)*m - zu) for m in range(iq)] # <- could be mistake here
+    sin_ms = [sin(2*pi*(p/q)*m - zu) for m in range(iq)]
+    diags_ms = kron(diag(cos_ms),s0_tz) + D1*kron(diag(sin_ms),sz_tx)
         # these are already filled out to q
         
     ssh = diags_q + diags_ms
@@ -51,14 +51,14 @@ def Harper_SOTI(p, q, mu = 0, nu = 0, zu = 0, M = 2.3, D1 = 0.8, D2 = 0.5):
     hop = (s0_tz + 1j*D1*sy_tx - D2*s0_ty)/2
     hop_dag = hop.conj().T
     
-    hop_q = np.kron(np.diag(np.ones(iq-1), 1),hop)
-    hop_dag_q = np.kron(np.diag(np.ones(iq-1), -1),hop_dag)
+    hop_q = kron(diag(ones(iq-1), 1),hop)
+    hop_dag_q = kron(diag(ones(iq-1), -1),hop_dag)
     
     nsh = hop_q + hop_dag_q
     
     # make boundary terms
-    nsh[0:4,4*(iq-1):4*iq] = np.exp(1j*nu)*hop_dag # <- could be mistake here
-    nsh[4*(iq-1):4*iq,0:4] = np.exp(-1j*nu)*hop
+    nsh[0:4,4*(iq-1):4*iq] = exp(1j*nu)*hop_dag # <- could be mistake here
+    nsh[4*(iq-1):4*iq,0:4] = exp(-1j*nu)*hop
     
     # add em up
     Ha = ssh + nsh
@@ -70,7 +70,7 @@ def matrix_form(p=1,q=10):
     H = Harper_SOTI(p,q)
     plt.figure(figsize=(10,10))
     plt.title(r"SOTI Harper matrix for $q = {} $".format(q), fontsize = 20, **futura)
-    plt.imshow(np.abs(H), cmap = 'inferno')
+    plt.imshow(abs(H), cmap = 'inferno')
     plt.xticks([])
     plt.yticks([])
     plt.show()
@@ -79,9 +79,9 @@ def matrix_form(p=1,q=10):
 def eigs_harper(H):
     # computes eigs of Harper matrix
     # returns list of eigs
-    # q = int(np.shape(H)[0])
+    # q = int(shape(H)[0])
     # spars scales better for large q
-    eigs = np.linalg.eigvalsh(H) #, k = q, return_eigenvectors=False)
+    eigs = linalg.eigvalsh(H) #, k = q, return_eigenvectors=False)
     
     return list(eigs)
 
@@ -112,8 +112,8 @@ def main(qmax = 100, mu = 0, nu = 0, zu = 0,
             eps.extend(eigs_pq*2)
                 
     # return phis and energies
-    phi = np.asarray(phi)
-    eps = np.asarray(eps)
+    phi = asarray(phi)
+    eps = asarray(eps)
     return phi, eps
 
 # spectrum creator
@@ -121,9 +121,9 @@ def spectrum(p, q, dimless_param, resolution = 100,
     unit_cell_range = True, unit_cell_scale = 1):
 
     if unit_cell_range == True:
-        ks = np.linspace(-np.pi/unit_cell_scale, np.pi/unit_cell_scale, resolution)
+        ks = linspace(-pi/unit_cell_scale, pi/unit_cell_scale, resolution)
     elif unit_cell_range == False:
-        ks = np.linspace(0, 2*np.pi/unit_cell_scale, resolution)
+        ks = linspace(0, 2*pi/unit_cell_scale, resolution)
 
     k_ret = []
     Es = []
@@ -139,10 +139,10 @@ def spectrum(p, q, dimless_param, resolution = 100,
 # thin out arrays to plot
 def thin_arrays(phi, eps, thin_size):
     
-    indices = np.random.randint(len(phi)-1, size = int(thin_size))
+    indices = random.randint(len(phi)-1, size = int(thin_size))
 
-    phi_thin = np.asarray([phi[index] for index in indices])
-    eps_thin = np.asarray([eps[index] for index in indices])
+    phi_thin = asarray([phi[index] for index in indices])
+    eps_thin = asarray([eps[index] for index in indices])
     
     return phi_thin, eps_thin
 
@@ -150,7 +150,7 @@ def thin_arrays(phi, eps, thin_size):
 def sum_over_k(dimless_param, thin_size = 1e6, resolution = 100, unit_cell_scale = 1, 
     Thin = False):
 
-    ks = np.linspace(-np.pi/unit_cell_scale,np.pi/unit_cell_scale,resolution)
+    ks = linspace(-pi/unit_cell_scale,pi/unit_cell_scale,resolution)
     
     phi_ks = []
     eps_ks = []
@@ -185,7 +185,7 @@ def get_ke_spectrum(dimless_param, p, q, mu = 0, nu = 0, zu = 0,
     resolution = 100,unit_cell_scale=1):
     Es = []
     k_ret = []
-    ks = np.linspace(-np.pi/unit_cell_scale,np.pi/unit_cell_scale,resolution)
+    ks = linspace(-pi/unit_cell_scale,pi/unit_cell_scale,resolution)
 
     # get energies for ks
     for k in ks:
@@ -237,7 +237,6 @@ def spectrum_plots(dimless_param,  mu = 0, nu = 0, zu = 0,
         ax[j][i].scatter(Es,ks,c='k',marker='.',s=1)
         #ax[j][i].set_xlim([-4,4]) # <- commented out for generality
         ax[j][i].set_title(r"$\Phi = {:.2}$".format(p_k/q), **futura)
-
 
 
 
