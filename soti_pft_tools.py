@@ -1,7 +1,8 @@
 # Tools for partial Fourier transform of the SOTI
 
 from numpy import *
-from soti_tools import *
+from soti_tools import * # maybe not a good idea to cross
+                        # contaminate
 from scipy.linalg import block_diag
 import scipy.sparse as ss
 import scipy.sparse.linalg as ssl
@@ -75,9 +76,9 @@ def soti_block(size, p , q, zu, t = 1, M = 2.3, D1 = 0.8, D2 = 0.5):
     
     M_off_diags = M_top_diag + M_bot_diag
     
-    M = M_diags + M_off_diags
+    MAT = M_diags + M_off_diags
     
-    return M
+    return MAT
 
 def H_SOTI(size, p, q, t = 1, M = 2.3, D1 = 0.8, D2 = 0.5):
     """
@@ -87,7 +88,7 @@ def H_SOTI(size, p, q, t = 1, M = 2.3, D1 = 0.8, D2 = 0.5):
     if int(size) != int(q):
         raise Exception("size must be the same as q")
         return
-        
+
     # put blocks in diagonal - 1 for every zu
     blocks = zeros((size,4*size**2,4*size**2),dtype=complex)
     zus = linspace(-pi,pi,size,endpoint = True)
@@ -100,3 +101,80 @@ def H_SOTI(size, p, q, t = 1, M = 2.3, D1 = 0.8, D2 = 0.5):
     H = ss.block_diag(blocks).toarray() # <- still needs testing
     
     return H
+
+def kz_spectrum(size,p,q,kz_res=10,t=1,M=2.3,D1=0.8,D2=0.5):
+    """
+    Energies as a function of k_z
+    """
+    # q == size
+    if int(size) != int(q):
+        raise Exception("size must be the same as q")
+        return
+
+    # kz
+    kz = linspace(pi-1,pi+1,kz_res,endpoint=True)
+
+    # for each kz, get Es from soti_block
+    kz_ret = []
+    Es = []
+
+    for k in kz:
+        H_kz = soti_block(size,p,q,zu=k,t=t,M=M,D1=D1,D2=D2)
+        H_kz_dim = int(4*size**2)
+        E_kz = ssl.eigsh(H_kz,k=H_kz_dim,return_eigenvectors=False)
+        Es.extend(E_kz)
+        kz_ret.extend([k]*H_kz_dim)
+
+    return kz_ret, Es
+
+def get_phis_eps(qmax=10,zu=0,t=1,M=2.3,D1=0.8,D2=0.5):
+    """
+    Phis and Energies required to plot Hofstadter's butterfly. Only for 
+    a given kz.
+    """
+    # initialize
+    phi = []
+    eps = []
+    eps_test = []
+
+    # fill up
+    for q in range(1,qmax):
+        for p in range(0,q):
+            # side length of the square H
+            H_dim = 4*q**2
+            # add phi
+            phi.extend([p/q]*H_dim + [(q-p)/q]*H_dim)
+            # get H and eps
+            H_pq = soti_block(size=q,p=p,q=q,zu=zu,t=t,M=M,D1=D1,D2=D2)
+            eigs_pq = ssl.eigsh(H_pq,k=H_dim,return_eigenvectors=False)
+            eps.extend([eigs_pq]*2)
+    
+    # convert into ndarray
+    phi = asarray(phi)
+    eps = concatenate(eps)
+    eps = asarray(eps)
+
+    return phi, eps
+
+def sum_over_kz(qmax=10,kz_res=10,ucs=1,t=1,M=2.3,D1=0.8,D2=0.5):
+    """
+    Sum over plane wave direction (z) to get correct butterfly pattern
+    """
+    # kz
+    kz = linspace(-pi/ucs,pi/ucs,kz_res,endpoint=True)
+
+    # initialize
+    phi = []
+    eps = []
+
+    # fill up
+    for k in kz:
+        phi_k, eps_k = get_phis_eps(qmax=qmax,zu=k,t=t,M=M,D1=D1,D2=D2)
+        phi.extend(phi_k)
+        eps.extend(eps_k)
+
+    # convert into ndarray
+    phi = asarray(phi)
+    eps = asarray(eps)
+
+    return phi, eps 
