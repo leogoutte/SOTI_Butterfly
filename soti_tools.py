@@ -28,7 +28,9 @@ sy_tx = kron(sig(2),sig(1))
 sz_tx = kron(sig(3),sig(1))
 
 # harper matrix
-def Harper_SOTI(p, q, mu = 0, nu = 0, zu = 0, M = 2.3, D1 = 0.8, D2 = 0.5):
+# in what follows, the size of the system is *always* q
+# alternatively, it could be a multiple of q by imposing gcd
+def Harper_SOTI(p, q, mu = 0, nu = 0, zu = 0, t = -1, M = 2.3, D1 = 0.8, D2 = 0.5):
     # comment later
     # all energies are in units of |t|
     
@@ -36,19 +38,19 @@ def Harper_SOTI(p, q, mu = 0, nu = 0, zu = 0, M = 2.3, D1 = 0.8, D2 = 0.5):
     iq = int(q)
     
     # make block diagonals (same-site-hoppers)
-    diags = M*s0_tz + s0_tz*cos(mu) + D1*sx_tx*sin(mu) + D2*s0_ty*cos(mu)
+    diags = M*s0_tz + t*s0_tz*cos(mu) + D1*sx_tx*sin(mu) + D2*s0_ty*cos(mu)
     diags_q = block_diag(*([diags]*iq)) # kron could be replaced by 
                                             # block_diag for large q
         
     cos_ms = [cos(2*pi*(p/q)*m - zu) for m in range(iq)] # <- could be mistake here
     sin_ms = [sin(2*pi*(p/q)*m - zu) for m in range(iq)]
-    diags_ms = kron(diag(cos_ms),s0_tz) + D1*kron(diag(sin_ms),sz_tx)
+    diags_ms = kron(diag(cos_ms),t*s0_tz) + D1*kron(diag(sin_ms),sz_tx)
         # these are already filled out to q
         
     ssh = diags_q + diags_ms
     
     # make off-diagonal terms (next-site-hoppers)
-    hop = (s0_tz + 1j*D1*sy_tx - D2*s0_ty)/2
+    hop = (t*s0_tz + 1j*D1*sy_tx - D2*s0_ty)/2
     hop_dag = hop.conj().T
     
     hop_q = kron(diag(ones(iq-1), 1),hop)
@@ -95,9 +97,8 @@ def gcd(a, b):
 
 # main function
 # makes phis and energies
-def main(qmax = 100, mu = 0, nu = 0, zu = 0, 
-    M = 2.3, D1 = 0.8, D2 = 0.5):
-
+def main_single(qmax = 100, mu = 0, nu = 0, zu = 0, t = -1, M = 2.3, D1 = 0.8, D2 = 0.5):
+    
     phi = []
     eps = []
     for q in range(1, qmax):
@@ -106,7 +107,7 @@ def main(qmax = 100, mu = 0, nu = 0, zu = 0,
             # add all possible phi (q copies of p/q and 1-p/q)
             phi.extend([p/q]*4*q + [(q-p)/q]*4*q)
             # compute eigs
-            Harper = Harper_SOTI(p, q, mu, nu, zu, M, D1, D2)
+            Harper = Harper_SOTI(p, q, mu, nu, zu, t, M, D1, D2)
             eigs_pq = eigs_harper(Harper)
             # add each eig twice for same reason as above (hermicity) # <- this may not apply anymore
             eps.extend(eigs_pq*2)
@@ -115,6 +116,24 @@ def main(qmax = 100, mu = 0, nu = 0, zu = 0,
     phi = asarray(phi)
     eps = asarray(eps)
     return phi, eps
+
+def main(qmax = 100, kz_res = 5, mu = 0, nu = 0, t = -1, M = 2.3, D1 = 0.8, D2 = 0.5):
+    """
+    Phis and Eps to plot Butterfly for Schindler's SOTI
+    """
+
+    zus = linspace(-pi,pi,num=kz_res,endpoint=True)
+
+    phi = []
+    eps = []
+
+    for zu in zus:
+        phi_zu, eps_zu = main_single(qmax=qmax,mu=mu,nu=nu,zu=zu,t=t,M=M,D1=D1,D2=D2)
+        phi.extend(phi_zu)
+        eps.extend(eps_zu)
+
+    return phi, eps
+
 
 # spectrum creator
 def spectrum(p, q, dimless_param, resolution = 100, 
@@ -129,10 +148,10 @@ def spectrum(p, q, dimless_param, resolution = 100,
     Es = []
 
     for k in ks:
-        A = Harper_SOTI(p = 50, q = qk, zu = k)
+        A = Harper_SOTI(p = 50, q = q, zu = k)
         E = eigs_harper(A)
         Es.extend(E)
-        k_ret.extend([k]*4*qk)
+        k_ret.extend([k]*4*q)
     
     return k_ret, Es
 
@@ -157,27 +176,27 @@ def sum_over_k(dimless_param, thin_size = 1e6, resolution = 100, unit_cell_scale
     
     if dimless_param == 1:
         for k in ks:
-            phi, eps = main(mu = k)
+            phi, eps = main_single(mu = k)
             phi_ks.extend(phi)
             eps_ks.extend(eps)
             
     elif dimless_param == 2:
         for k in ks:
-            phi, eps = main(nu = k)
+            phi, eps = main_single(nu = k)
             phi_ks.extend(phi)
             eps_ks.extend(eps)
             
     elif dimless_param == 3:
         for k in ks:
-            phi, eps = main(zu = k)
+            phi, eps = main_single(zu = k)
             phi_ks.extend(phi)
             eps_ks.extend(eps)
 
-    if thin == True:
+    if Thin == True:
         phi_ks_thin, eps_ks_thin = thin_arrays(phi_ks, eps_ks, thin_size)
         return phi_ks_thin, eps_ks_thin
 
-    elif thin == False:
+    elif Thin == False:
         return phi_ks, eps_ks
 
 # gets Es for given ks
@@ -207,7 +226,7 @@ def get_ke_spectrum(dimless_param, p, q, mu = 0, nu = 0, zu = 0,
 futura = {'fontname':'Futura'}
 
 # makes k vs e plots for given phis
-def spectrum_plots(dimless_param,  mu = 0, nu = 0, zu = 0,
+def spectrum_plots(dimless_param, mu = 0, nu = 0, zu = 0,
     ps = [0,1,10,25,37,50], q = 100, resolution = 100, unit_cell_scale = 1):
     # ps must be a len six 1d array
 

@@ -1,11 +1,28 @@
-# Tools for partial Fourier transform of the SOTI
+# Script to generate Energy vs. kz spectra for the 
+# second-order topological insulator (Schindler et al.)
+
+# The goal is to make this all-inclusive in order for it to 
+# be run on a Compute Canada cluster
 
 from numpy import *
-from soti_tools import * # maybe not a good idea to cross
-                        # contaminate
 from scipy.linalg import block_diag
 import scipy.sparse as ss
 import scipy.sparse.linalg as ssl
+import matplotlib.pyplot as plt
+
+# pauli matrices
+def sig(n):
+    # pauli matrices
+    # n = 0 is identity, n = 1,2,3 is x,y,z resp.
+    if n == 0:
+        a = identity(2, dtype = complex)
+    if n == 1:
+        a = array([[0 , 1],[1 , 0]], dtype = complex)
+    if n == 2:
+        a = array([[0 , -1j],[1j , 0]], dtype = complex)
+    if n == 3:
+        a = array([[1 , 0],[0 , -1]], dtype = complex)
+    return a
 
 # define kroneckers of pauli matrices
 s0_ty = kron(sig(0),sig(2))
@@ -84,11 +101,6 @@ def H_SOTI(size, p, q, t = -1, M = 2.3, D1 = 0.8, D2 = 0.5):
     """
     SOTI Hamiltonian Fourier transformed in z and real in x,y
     """
-    # q == size
-    # condition on q and size
-    if gcd(size,q) == 1:
-        raise Exception("size must be a multiple of q")
-        return 1
 
     # put blocks in diagonal - 1 for every zu
     blocks = zeros((size,4*size**2,4*size**2),dtype=complex)
@@ -115,7 +127,7 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     Es = []
 
     # set the number of eigs returned
-    newsize = q*ucsize
+    newsize = q * ucsize
     num_eigs = int((4*newsize**2)/8) # <- let's try this for now and tweak if need be
     
     for kz in kzs:
@@ -125,58 +137,6 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
         kz_ret.extend([kz]*num_eigs)
 
     return kz_ret, Es
-
-def get_phis_eps(qmax=10,ucsize=1,zu=0,t=-1,M=2.3,D1=0.8,D2=0.5):
-    """
-    Phis and Energies required to plot Hofstadter's butterfly. Only for 
-    a given kz.
-    """
-    # initialize
-    phi = []
-    eps = []
-
-    # fill up
-    for q in range(1,qmax):
-        newsize = q*ucsize
-        for p in range(0,q):
-            # side length of the square H
-            H_dim = 4*newsize**2
-            # add phi
-            phi.extend([p/q]*H_dim + [(q-p)/q]*H_dim)
-            # get H and eps
-            H_pq = soti_block(size=newsize,p=p,q=q,zu=zu,t=t,M=M,D1=D1,D2=D2)
-            eigs_pq = ssl.eigsh(H_pq,k=H_dim,return_eigenvectors=False)
-            eps.extend([eigs_pq]*2)
-    
-    # convert into ndarray
-    phi = asarray(phi)
-    eps = concatenate(eps)
-    eps = asarray(eps)
-
-    return phi, eps
-
-def sum_over_kz(qmax=10,ucsize=1,kz_res=10,t=-1,M=2.3,D1=0.8,D2=0.5):
-    """
-    Sum over plane wave and gauge field direction (z) to get correct butterfly pattern
-    """
-    # kz
-    kz = linspace(-pi,pi,num=kz_res,endpoint=True)
-
-    # initialize
-    phi = []
-    eps = []
-
-    # fill up
-    for k in kz:
-        phi_k, eps_k = get_phis_eps(qmax=qmax,ucsize=ucsize,zu=k,t=t,M=M,D1=D1,D2=D2)
-        phi.extend(phi_k)
-        eps.extend(eps_k)
-
-    # convert into ndarray
-    phi = asarray(phi)
-    eps = asarray(eps)
-
-    return phi, eps 
 
 def spectrum_plots_kz(ps=[0,1,10],q=20,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     """
@@ -207,31 +167,7 @@ def spectrum_plots_kz(ps=[0,1,10],q=20,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0
 
     return 
 
-# too computationally expensive
-def inspect_butterfly(size,q,phi_max,t=-1,M=2.3,D1=0.8,D2=0.5):
-    """
-    Zooms in on low Phi and near-fermi level energies for Schindler's SOTI butterfly.
-    Contrary to other butterfly plot programs, the Phis here are evenly spaced. 
-    """
-    # make phis
-    p_max = int(phi_max*q)
-    phi = []
-    eps = []
-    print("hello")
-    # number of eigenvalues near e = 0
-    num_eigs = int(4*size)
+# run it
+spectrum_plots_kz(ps=[1,2],q=10,kz_res=100,ucsize=3)
 
-    # set up zus
-    #myzus = linspace(-pi,pi,num=5,endpoint=True)
-
-    # get energies for phis
-    #for zu in zus:
-    for p in range(p_max):
-        H_pq = soti_block(size=size,p=p,q=q,zu=0,t=t,M=M,D1=D1,D2=D2)
-        print("got H")
-        eps_pq = ssl.eigsh(H_pq,k=num_eigs,sigma=0,return_eigenvectors=False)
-        print("got eigs")
-        phi.extend([p/q]*num_eigs) # no need to get (q-p)/q
-        eps.extend(eps_pq)
-
-    return phi, eps
+### LPBG
