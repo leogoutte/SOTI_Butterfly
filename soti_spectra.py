@@ -120,7 +120,7 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     Energies as a function of k_z
     """
     # kz
-    kzs = linspace(-pi*ucsize,pi*ucsize,num=kz_res,endpoint=True)
+    kzs = linspace(-pi,pi,num=kz_res)
 
     # for each kz, get Es from soti_block
     kz_ret = []
@@ -168,6 +168,11 @@ def spectrum_plots_kz(ps=[0,1,10],q=20,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0
     return 
 
 # run it
-spectrum_plots_kz(ps=[1,2],q=10,kz_res=100,ucsize=3)
+#spectrum_plots_kz(ps=[1,2],q=10,kz_res=100,ucsize=3)
+ks, Es = kz_spectrum(p=1,q=10,kz_res=100,ucsize=3)
+
+# save arrays to files
+savetxt("ks_soti.csv",ks,delimiter=',')
+savetxt("Es_soti.csv",Es,delimiter=',')
 
 ### LPBG

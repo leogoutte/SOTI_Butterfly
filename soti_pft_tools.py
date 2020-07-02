@@ -108,7 +108,7 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     Energies as a function of k_z
     """
     # kz
-    kzs = linspace(-pi*ucsize,pi*ucsize,num=kz_res,endpoint=True)
+    kzs = linspace(-pi,pi,num=kz_res,endpoint=True)
 
     # for each kz, get Es from soti_block
     kz_ret = []

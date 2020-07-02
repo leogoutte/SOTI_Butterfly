@@ -113,10 +113,20 @@ def get_phis_eps(qmax=10,ucsize=1,zu=0,t=-1,M=2.3,D1=0.8,D2=0.5):
     phi = []
     eps = []
 
-    # fill up
+    # phi = 0
+    newsize_0 = qmax*ucsize
+    H_dim_0 = 4*newsize_0**2
+    # add phi
+    phi.extend([0]*H_dim_0 + [1]*H_dim_0)
+    # get H and eps
+    H_pq_0 = soti_block(size=newsize_0,p=0,q=qmax,zu=zu,t=t,M=M,D1=D1,D2=D2)
+    eigs_pq_0 = ssl.eigsh(H_pq_0,k=H_dim_0,return_eigenvectors=False)
+    eps.extend([eigs_pq_0]*2)
+
+    # fill up rest
     for q in range(1,qmax):
         newsize = q * ucsize
-        for p in range(0,q):
+        for p in range(1,q):
             if gcd(p,q) == 1:
                 # side length of the square H
                 H_dim = 4*newsize**2
@@ -126,6 +136,7 @@ def get_phis_eps(qmax=10,ucsize=1,zu=0,t=-1,M=2.3,D1=0.8,D2=0.5):
                 H_pq = soti_block(size=newsize,p=p,q=q,zu=zu,t=t,M=M,D1=D1,D2=D2)
                 eigs_pq = ssl.eigsh(H_pq,k=H_dim,return_eigenvectors=False)
                 eps.extend([eigs_pq]*2)
+            print("Done phi = {}/{}".format(p,q))
     
     # convert into ndarray
     phi = asarray(phi)
@@ -150,6 +161,7 @@ def sum_over_kz(qmax=10,ucsize=1,kz_res=10,t=-1,M=2.3,D1=0.8,D2=0.5):
         phi_k, eps_k = get_phis_eps(qmax=qmax,ucsize=ucsize,zu=k,t=t,M=M,D1=D1,D2=D2)
         phi.extend(phi_k)
         eps.extend(eps_k)
+        print("DONE K = {:.3}".format(k))
 
     # convert into ndarray
     phi = asarray(phi)
@@ -164,17 +176,8 @@ def main(qmax,ucsize=1,kz_res=10,t=-1,M=2.3,D1=0.8,D2=0.5):
     """
     # sum_over_kz to get phi and eps
     phi, eps = sum_over_kz(qmax=qmax,ucsize=ucsize,kz_res=kz_res,t=t,M=M,D1=D1,D2=D2)
-
-    # plot it and save
-    fufont = {'fontname':'Futura'}
-
-    plt.figure(figsize=(20,10))
-    plt.title(r"Magnetic flux dependency of energy for \n the SOTI conducting states", fontsize = '20',**fufont)
-    plt.scatter(eps, phi, c = 'k', marker = '.', s=0.01)
-    plt.ylabel(r"Magnetic Flux $\Phi$", fontsize = '15',**fufont)
-    plt.xlabel(r"Energy $\epsilon$", fontsize = '15',**fufont)
-    plt.savefig("soti_butterfly_ces.png") # ces: conducting edge states
-    plt.show()
+    savetxt("phi_soti.csv",phi,delimiter=',')
+    savetxt("eps_soti.csv",eps,delimiter=',')
 
     return 
 
