@@ -120,7 +120,7 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     Energies as a function of k_z
     """
     # kz
-    kzs = linspace(-pi,pi,num=kz_res)
+    kzs = linspace(-pi,pi,num=kz_res,endpoint=False) # to get pretty mid point
 
     # for each kz, get Es from soti_block
     kz_ret = []
@@ -143,36 +143,26 @@ def spectrum_plots_kz(ps=[0,1,10],q=20,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0
     Plots of Energy as a function of k for the SOTI for various magnetic flux 
     """
 
-    futura = {'fontname':'Futura'}
-
-    # set up subplots
-    fig, ax = plt.subplots(nrows = 1, ncols = int(len(ps)), figsize = (20,6), 
-        sharey = True, sharex = True)
-    fig.subplots_adjust(wspace=0.1,hspace=0.25) 
-
     # fill them up
     for i in range(len(ps)):
         pk = ps[i]
         ks, Eks = kz_spectrum(p=pk,q=q,kz_res=kz_res,ucsize=ucsize,t=t,M=M,D1=D1,D2=D2)
         
-        # set labels
-        if i == 0:
-            ax[i].set_ylabel(r"$E/|t|$",fontsize = 15, **futura)
-        ax[i].set_xlabel(r"$k$", fontsize = 15, **futura)
+        if i==0:
+            all_ks = zeros((len(ks),len(ps)))
+            all_Eks = zeros((len(Eks),len(ps)))
 
-        # plot
-        ax[i].scatter(ks,Eks,c='k',marker='.',s=5)
-        ax[i].set_title(r"$\Phi = {:.2}$".format(pk/q), **futura)
-        ax[i].set_ylim(-1,1) # range of interest
+        all_ks[:,i]=ks
+        all_Eks[:,i]=Eks
 
-    return 
+    return all_ks, all_Eks
 
 # run it
 #spectrum_plots_kz(ps=[1,2],q=10,kz_res=100,ucsize=3)
-ks, Es = kz_spectrum(p=1,q=10,kz_res=100,ucsize=3)
+all_ks, all_Es = spectrum_plots_kz(ps=[0,1,3],q=10,kz_res=100,ucsize=3)
 
 # save arrays to files
-savetxt("ks_soti.csv",ks,delimiter=',')
-savetxt("Es_soti.csv",Es,delimiter=',')
+savetxt("all_ks_soti.csv",all_ks,delimiter=',')
+savetxt("all_Es_soti.csv",all_Es,delimiter=',')
 
 ### LPBG
