@@ -5,7 +5,6 @@
 # be run on a Compute Canada cluster
 
 from numpy import *
-from scipy.linalg import block_diag
 import scipy.sparse as ss
 import scipy.sparse.linalg as ssl
 import matplotlib.pyplot as plt
@@ -128,7 +127,7 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
 
     # set the number of eigs returned
     newsize = q * ucsize
-    num_eigs = int((4*newsize**2)/8) # <- let's try this for now and tweak if need be
+    num_eigs = int((4*newsize**2)) # <- let's try this for now and tweak if need be
     
     for kz in kzs:
         H_kz = soti_block(newsize,p,q,zu=kz,t=t,M=M,D1=D1,D2=D2)
@@ -138,31 +137,40 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
 
     return kz_ret, Es
 
-def spectrum_plots_kz(ps=[0,1,10],q=20,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
+def spectrum_plots_kz(ps=[0,1,10],qs=[20,20,20],kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     """
     Plots of Energy as a function of k for the SOTI for various magnetic flux 
     """
+    # initialize
+    all_ks=[]
+    all_Eks=[]
 
     # fill them up
     for i in range(len(ps)):
-        pk = ps[i]
-        ks, Eks = kz_spectrum(p=pk,q=q,kz_res=kz_res,ucsize=ucsize,t=t,M=M,D1=D1,D2=D2)
-        
-        if i==0:
-            all_ks = zeros((len(ks),len(ps)))
-            all_Eks = zeros((len(Eks),len(ps)))
+        p = ps[i]
+        q = qs[i]
+        ks, Eks = kz_spectrum(p=p,q=q,kz_res=kz_res,ucsize=ucsize,t=t,M=M,D1=D1,D2=D2)
 
-        all_ks[:,i]=ks
-        all_Eks[:,i]=Eks
+        all_ks.append(ks)
+        all_Eks.append(Eks)
 
     return all_ks, all_Eks
 
 # run it
-#spectrum_plots_kz(ps=[1,2],q=10,kz_res=100,ucsize=3)
-all_ks, all_Es = spectrum_plots_kz(ps=[0,1,3],q=10,kz_res=100,ucsize=3)
-
-# save arrays to files
-savetxt("all_ks_soti.csv",all_ks,delimiter=',')
-savetxt("all_Es_soti.csv",all_Es,delimiter=',')
+if __name__ == "__main__":
+    import csv
+    all_ks, all_Es = spectrum_plots_kz(ps=[0,0,0],qs=[1,5,20],kz_res=100,ucsize=3)
+    # save arrays to files
+    # if list
+    with open("all_ks_soti.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(all_ks)  
+    with open("all_Es_soti.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(all_Es) 
+    # if np array  
+    #savetxt("all_ks_soti.csv",all_ks,delimiter=',')
+    #savetxt("all_Es_soti.csv",all_Es,delimiter=',')
+    
 
 ### LPBG

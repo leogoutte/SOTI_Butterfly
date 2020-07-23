@@ -94,7 +94,7 @@ def soti_block(size, p , q, zu, t = -1, M = 2.3, D1 = 0.8, D2 = 0.5):
     M_diags = ss.block_diag(blocks)
     
     # off diagonals x -> x+1 & h.c.
-    hop_x = 1/2 * (t * pms.s0_tz() + 1j * D1 * pms.sx_tx() + D2 * pms.s0_ty())
+    hop_x=1/2*(t*pms.s0_tz()+1j*D1*pms.sx_tx()+D2*pms.s0_ty())
     hop_x_dag = hop_x.conj().T
     
     # fill up to identity

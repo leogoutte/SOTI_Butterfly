@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.sparse as ss
 import scipy.sparse.linalg as ssl
+from scipy.ndimage import gaussian_filter
 
 # pauli matrices
 def sig(n):
@@ -124,6 +125,32 @@ def normalize_prob(stuff):
     sums = np.sum(stuff,axis=0)
     return np.divide(stuff,sums)
 
+def batch_spins(prob,spin_nos):
+    """
+    Batches over spin components and returns position probability.
+    """
+    # condition on no. of prob vectors
+    vec_dim=len(prob.shape)
+
+    # vec_nos=1
+    if vec_dim==1:
+        batched_size = int(prob.shape[0]/spin_nos)
+        prob_pos = np.zeros((batched_size), dtype = float)
+        for i in range(batched_size):
+            batched_sum = np.sum(prob[i:i+spin_nos],axis=0)
+            prob_pos[i] = batched_sum
+
+    # batch over spin components
+    else:
+        vec_nos=prob.shape[1]
+        batched_size = int(prob.shape[0]/spin_nos)
+        prob_pos = np.zeros((batched_size,vec_nos), dtype = float)
+        for i in range(batched_size):
+            batched_sum = np.sum(prob[i:i+spin_nos,:],axis=0)
+            prob_pos[i,:] = batched_sum
+
+    return prob_pos
+
 def wavefunction_to_probability(waves, spin_nos=4):
     """
     Transforms a wavefunction (probability amplitude) into a probability
@@ -131,32 +158,101 @@ def wavefunction_to_probability(waves, spin_nos=4):
     """
 
     # get probability distribution
-    waves_abs = np.abs(waves)**2
-    vec_nos = waves_abs.shape[1]
+    prob = np.abs(waves)**2
+    vec_dim = len(prob.shape)
 
     # dimensions of positions
     pos_dim = int((waves.shape[0]/spin_nos)**(1/2))
 
-    # batch over spin components
-    batched_size = int(waves.shape[0]/spin_nos)
-    prob_pos = np.zeros((batched_size,vec_nos), dtype = float)
-    for i in range(batched_size):
-        batched_sum = np.sum(waves_abs[i:i+spin_nos,:],axis=0)
-        prob_pos[i,:] = batched_sum
+    # batch spins
+    prob_pos=batch_spins(prob,spin_nos=spin_nos)
 
-    
+    if vec_dim==1:
+        # extract y dependence and smooth over with mean
+        prob_y=np.zeros((pos_dim),dtype=float)
+        for i in range(pos_dim):
+            # include all possibilities
+            prob_y += prob_pos[i:i+pos_dim]
+        # average over them
+        prob_y = prob_y/float(pos_dim)
+        # normalize
+        prob_y_normed = normalize_prob(prob_y)
 
-    # extract y dependence
-    prob_y = prob_pos[0:pos_dim,:] # possible improvement: avg over
-                                   # all normed batches of prob_y 
-    prob_y_normed = normalize_prob(prob_y)
+        # extract x dependence and smooth over with mean
+        prob_x = np.zeros((pos_dim),dtype=float)
+        for i in range(pos_dim):
+            x_vals = prob_pos[i:i+pos_dim]/prob_y_normed # array of all the same x values
+            prob_x[i] = np.mean(x_vals)
+        prob_x_normed = normalize_prob(prob_x)
 
-    # extract x dependence
-    prob_x = np.zeros((pos_dim,vec_nos),dtype=float)
-    for i in range(pos_dim):
-        x_vals = prob_pos[i:i+pos_dim,:]/prob_y_normed # array of all the same x values
-        prob_x[i,:] = np.mean(x_vals,axis=0)
-    prob_x_normed = normalize_prob(prob_x)
+    else:
+        vec_nos=prob_pos.shape[1]
+        # extract y dependence and smooth over with mean
+        prob_y=np.zeros((pos_dim,vec_nos),dtype=float)
+        for i in range(pos_dim):
+            # include all possibilities
+            prob_y += prob_pos[i:i+pos_dim,:]
+        # average over them
+        prob_y = prob_y/float(pos_dim)
+        # normalize
+        prob_y_normed = normalize_prob(prob_y)
+
+        # extract x dependence and smooth over with mean
+        prob_x = np.zeros((pos_dim,vec_nos),dtype=float)
+        for i in range(pos_dim):
+            x_vals = prob_pos[i:i+pos_dim,:]/prob_y_normed # array of all the same x values
+            prob_x[i,:] = np.mean(x_vals,axis=0)
+        prob_x_normed = normalize_prob(prob_x)
 
     # return the (pos_dim,vec_nos) arrays for x and y probabilities
     return prob_x_normed, prob_y_normed
+
+def make_density_map(waves,spin_nos=4):
+    """
+    Makes 2D imshow density plot of wavefunction's probability 
+    over x (columns, horizontal) and y (rows, vertical).
+    """
+    # get normed probs in x and y
+    prob_x_normed,prob_y_normed=wavefunction_to_probability(waves,spin_nos=spin_nos)
+
+    # vec dimensions
+    vec_dim=len(waves.shape)
+    pos_dim = int((waves.shape[0]/spin_nos)**(1/2))
+    
+    # make map
+    if vec_dim==1:
+        prob_map=np.outer(prob_y_normed,prob_x_normed)
+
+    else:
+        vec_nos=waves.shape[1]
+        prob_map=np.zeros((vec_nos,pos_dim,pos_dim))
+        for i in range(vec_nos):
+            prob_map[i,:,:]=np.outer(prob_y_normed[:,i],prob_x_normed[:,i])
+
+    return prob_map
+
+# globally defined kz
+kzs = np.linspace(-np.pi,np.pi,num=101,endpoint=False)
+
+def main(p,q,zu=-np.pi,zu_idx=0,spin_nos=4,num_eigs=4,ucsize=1):
+    """
+    Main function.
+    """
+    es,wvs=get_wavefunctions(p=p,q=q,zu=zu,num_eigs=num_eigs,ucsize=ucsize)
+    prob_map=make_density_map(waves=wvs,spin_nos=spin_nos)
+    newsize=int(q*ucsize)
+    prob_map_flat=prob_map.reshape(int(num_eigs*newsize),newsize)
+    # save in file
+    with open("wavefunction_maps.csv","a") as f:
+        np.savetxt(f,prob_map_flat,delimiter=',')
+
+if __name__ == "__main__":
+    import sys
+    # get kz from argv
+    args=sys.argv
+    kz_idx=int(args[1])
+    kz=kzs[kz_idx]
+    # run program
+    # note that we have to lag between jobs
+    # to avoid disordering the data file
+    main(p=1,q=10,zu=kz,spin_nos=4,num_eigs=4,ucsize=3)

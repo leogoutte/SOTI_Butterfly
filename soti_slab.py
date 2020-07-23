@@ -156,3 +156,47 @@ def ky_spectrum_slab(p,q,zu=0,ky_res=100,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
         ky_ret.extend([ky]*num_eigs)
 
     return ky_ret, Es
+
+# butterfly stuff
+def get_phis_eps(qmax=10,ucsize=1,nu=0,zu=0,t=-1,M=2.3,D1=0.8,D2=0.5):
+    """
+    Phis and Energies required to plot Hofstadter's butterfly. Only for 
+    a given kz.
+    """
+    # initialize
+    phi = []
+    eps = []
+
+    # fill up
+    for q in range(1,qmax):
+        newsize = q*ucsize
+        for p in range(0,q):
+            # side length of the square H
+            H_dim = 4*newsize**2
+            # add phi
+            phi.extend([p/q]*H_dim + [(q-p)/q]*H_dim)
+            # get H and eps
+            H_pq = soti_block_slab(size=newsize,p=p,q=q,nu=nu,zu=zu,t=t,M=M,D1=D1,D2=D2)
+            eigs_pq = ssl.eigsh(H_pq,k=H_dim,return_eigenvectors=False)
+            eps.extend([eigs_pq]*2)
+    
+    # convert into ndarray
+    phi = np.asarray(phi)
+    eps = np.concatenate(eps)
+    eps = np.asarray(eps)
+
+    return phi, eps
+
+kzs=np.linspace(-np.pi,np.pi,num=101,endpoint=True)
+
+if __name__ == "__main__":
+    import sys
+    # get kz from argv
+    args = sys.argv
+    kz_idx = int(args[1])
+    kz = kzs[kz_idx]
+    # run program
+    phi, eps = get_phis_eps(qmax=50,nu=0,zu=kz,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5)
+    # save in file
+    with open("soti_slab_butterfly_data.csv","a") as f:
+        np.savetxt(f,(phi,eps),delimiter=',')
