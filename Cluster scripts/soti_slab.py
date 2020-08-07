@@ -1,3 +1,9 @@
+# Script to generate plots for the 
+# second-order topological insulator (Schindler et al.)
+
+# The goal is to make this all-inclusive in order for it to 
+# be run on a Compute Canada cluster
+
 import numpy as np
 import scipy.sparse as ss
 import scipy.sparse.linalg as ssl

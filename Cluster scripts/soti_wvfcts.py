@@ -1,3 +1,7 @@
+### WORK IN PROGRESS
+# still need to fix wavefunction_to_probability 
+# and the ordering of basis states
+
 import numpy as np
 import scipy.sparse as ss
 import scipy.sparse.linalg as ssl

@@ -1,8 +1,10 @@
-# Tools for partial Fourier transform of the SOTI
+# Script to generate Energy vs. kz spectra for the 
+# second-order topological insulator (Schindler et al.)
+
+# The goal is to make this all-inclusive in order for it to 
+# be run on a Compute Canada cluster
 
 import numpy as np
-import soti_tools as st # maybe not a good idea to cross
-                        # contaminate
 import scipy.sparse as ss
 import scipy.sparse.linalg as ssl
 import matplotlib.pyplot as plt
@@ -129,18 +131,18 @@ def H_SOTI(size, p, q, t = -1, M = 2.3, D1 = 0.8, D2 = 0.5):
 
 def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     """
-    Energies as a function of k_z
+    Energies as a function of k_z.
     """
     # kz
-    kzs = np.linspace(-np.pi,np.pi,num=kz_res,endpoint=True)
+    kzs = np.linspace(-np.pi,np.pi,num=kz_res+1,endpoint=True) # to get pretty mid point
 
     # for each kz, get Es from soti_block
     kz_ret = []
     Es = []
 
     # set the number of eigs returned
-    newsize = q*ucsize
-    num_eigs = int((4*newsize**2)/8) # <- let's try this for now and tweak if need be
+    newsize = q * ucsize
+    num_eigs = int((4*newsize**2)) # <- let's try this for now and tweak if need be
     
     for kz in kzs:
         H_kz = soti_block(newsize,p,q,zu=kz,t=t,M=M,D1=D1,D2=D2)
@@ -150,89 +152,40 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
 
     return kz_ret, Es
 
-def get_phis_eps(qmax=10,ucsize=1,zu=0,t=-1,M=2.3,D1=0.8,D2=0.5):
-    """
-    Phis and Energies required to plot Hofstadter's butterfly. Only for 
-    a given kz.
-    """
-    # initialize
-    phi = []
-    eps = []
-
-    # fill up
-    for q in range(1,qmax):
-        newsize = q*ucsize
-        for p in range(0,q):
-            # side length of the square H
-            H_dim = 4*newsize**2
-            # add phi
-            phi.extend([p/q]*H_dim + [(q-p)/q]*H_dim)
-            # get H and eps
-            H_pq = soti_block(size=newsize,p=p,q=q,zu=zu,t=t,M=M,D1=D1,D2=D2)
-            eigs_pq = ssl.eigsh(H_pq,k=H_dim,return_eigenvectors=False)
-            eps.extend([eigs_pq]*2)
-    
-    # convert into ndarray
-    phi = np.asarray(phi)
-    eps = np.concatenate(eps)
-    eps = np.asarray(eps)
-
-    return phi, eps
-
-def sum_over_kz(qmax=10,ucsize=1,kz_res=10,t=-1,M=2.3,D1=0.8,D2=0.5):
-    """
-    Sum over plane wave and gauge field direction (z) to get correct butterfly pattern
-    """
-    # kz
-    kz = np.linspace(-np.pi,np.pi,num=kz_res,endpoint=True)
-
-    # initialize
-    phi = []
-    eps = []
-
-    # fill up
-    for k in kz:
-        phi_k, eps_k = get_phis_eps(qmax=qmax,ucsize=ucsize,zu=k,t=t,M=M,D1=D1,D2=D2)
-        phi.extend(phi_k)
-        eps.extend(eps_k)
-
-    # convert into ndarray
-    phi = np.asarray(phi)
-    eps = np.asarray(eps)
-
-    return phi, eps 
-
-def spectrum_plots_kz(ps=[0,1,10],q=20,kz_res=100,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
+def spectrum_plots_kz(ps=[0,1,10],qs=[20,20,20],kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     """
     Plots of Energy as a function of k for the SOTI for various magnetic flux 
     """
-
-    futura = {'fontname':'Times'}
-
-    # set up subplots
-    fig, ax = plt.subplots(nrows = 1, ncols = int(len(ps)), figsize = (16,12), 
-        sharey = True, sharex = True)
-    fig.subplots_adjust(wspace=0.1,hspace=0.25) 
+    # initialize
+    all_ks=[]
+    all_Eks=[]
 
     # fill them up
     for i in range(len(ps)):
-        pk = ps[i]
-        ks, Eks = kz_spectrum(p=pk,q=q,kz_res=kz_res,ucsize=ucsize,t=t,M=M,D1=D1,D2=D2)
-        if i==0:
-            all_ks = np.zeros((len(ks),len(ps)))
-            all_Eks = np.zeros((len(Eks),len(ps)))
-        all_ks[:,i]=ks
-        all_Eks[:,i]=Eks
-        
-        # set labels
-        if i == 0:
-            ax[i].set_ylabel(r"$E/|t|$",fontsize = 15, **futura)
-        ax[i].set_xlabel(r"$k$", fontsize = 15, **futura)
+        p = ps[i]
+        q = qs[i]
+        ks, Eks = kz_spectrum(p=p,q=q,kz_res=kz_res,ucsize=ucsize,t=t,M=M,D1=D1,D2=D2)
 
-        # plot
-        ax[i].scatter(ks,Eks,c='mediumslateblue')
-        ax[i].set_title(r"$\Phi = {:.2}$".format(pk/q), **futura)
-        ax[i].set_ylim(-1,1) # range of interest
+        all_ks.append(ks)
+        all_Eks.append(Eks)
 
     return all_ks, all_Eks
 
+# run it
+if __name__ == "__main__":
+    import csv
+    all_ks, all_Es = spectrum_plots_kz(ps=[2,3,4],qs=[20,20,20],kz_res=100,ucsize=3)
+    # save arrays to files
+    # if list with different lengths
+    with open("all_ks_soti.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(all_ks)  
+    with open("all_Es_soti.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(all_Es) 
+    # if np array  
+    #savetxt("all_ks_soti.csv",all_ks,delimiter=',')
+    #savetxt("all_Es_soti.csv",all_Es,delimiter=',')
+    
+
+### LPBG
