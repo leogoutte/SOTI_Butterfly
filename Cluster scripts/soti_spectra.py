@@ -142,7 +142,7 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
 
     # set the number of eigs returned
     newsize = q * ucsize
-    num_eigs = int((4*newsize**2)) # <- let's try this for now and tweak if need be
+    num_eigs = int((4*newsize)) # <- let's try this for now and tweak if need be
     
     for kz in kzs:
         H_kz = soti_block(newsize,p,q,zu=kz,t=t,M=M,D1=D1,D2=D2)
@@ -151,6 +151,19 @@ def kz_spectrum(p,q,kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
         kz_ret.extend([kz]*num_eigs)
 
     return kz_ret, Es
+
+def kz_spectrum_single(kz,p,q,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
+    newsize = q * ucsize
+    num_eigs = int((4*newsize)) # <- let's try this for now and tweak if need be
+
+    kz_ret = np.zeros((num_eigs),dtype=float)
+
+    H_kz = soti_block(newsize,p,q,zu=kz,t=t,M=M,D1=D1,D2=D2)
+    E_kz = ssl.eigsh(H_kz,k=num_eigs,sigma=0,return_eigenvectors=False)
+    kz_ret = np.full(num_eigs,kz)
+
+    return kz_ret, E_kz
+
 
 def spectrum_plots_kz(ps=[0,1,10],qs=[20,20,20],kz_res=10,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     """
@@ -174,18 +187,18 @@ def spectrum_plots_kz(ps=[0,1,10],qs=[20,20,20],kz_res=10,ucsize=1,t=-1,M=2.3,D1
 # run it
 if __name__ == "__main__":
     import csv
-    all_ks, all_Es = spectrum_plots_kz(ps=[2,3,4],qs=[20,20,20],kz_res=100,ucsize=3)
+    ks, Es = kz_spectrum(p=1,q=50,kz_res=100,ucsize=3)
     # save arrays to files
     # if list with different lengths
-    with open("all_ks_soti.csv", "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(all_ks)  
-    with open("all_Es_soti.csv", "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(all_Es) 
+    #with open("all_ks_soti.csv", "w", newline="") as f:
+    #    writer = csv.writer(f)
+    #    writer.writerows(all_ks)  
+    #with open("all_Es_soti.csv", "w", newline="") as f:
+    #    writer = csv.writer(f)
+    #    writer.writerows(all_Es) 
     # if np array  
-    #savetxt("all_ks_soti.csv",all_ks,delimiter=',')
-    #savetxt("all_Es_soti.csv",all_Es,delimiter=',')
+    np.savetxt("ks_soti_p1_q50.csv",ks,delimiter=',')
+    np.savetxt("Es_soti_p1_q50.csv",Es,delimiter=',')
     
 
 ### LPBG

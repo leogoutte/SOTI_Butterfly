@@ -84,15 +84,14 @@ def soti_block_slab(size, p , q, nu, zu, t = -1, M = 2.3, D1 = 0.8, D2 = 0.5):
     """
     # put unit_blocks into diag
     
-    # make blocks array with dims (size,4size,4size)
-    blocks = np.zeros((size,4*size,4*size),dtype=complex) 
+    # make blocks array with dims (size,4q,4q)
+    blocks = np.zeros((size,4*q,4*q),dtype=complex) 
     
     # fill up
     #xs = linspace(0,size,num=size) # for completeness
     for i in range(size):
         #x = xs[i] # doesn't actually do anything
-        blocks[i,:,:] = unit_block_slab(p=p,q=q,nu=nu,zu=zu,t=t,
-                                   M=M,D1=D1,D2=D2)
+        blocks[i,:,:] = unit_block_slab(p=p,q=q,nu=nu,zu=zu,t=t,M=M,D1=D1,D2=D2)
         
     # put in diagonal
     M_diags = ss.block_diag(blocks)
@@ -254,7 +253,7 @@ def main_ky_spectra(p,q,ky_res=100,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
 
 def main_kz_spectra(p,q,kz_res=100,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     import sys
-    # get kz from argv
+    # get ky from argv
     args = sys.argv
     ky_idx = int(args[1])
     ky = ks[ky_idx]
@@ -264,7 +263,20 @@ def main_kz_spectra(p,q,kz_res=100,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
     with open("soti_slab_kz_spectrum_data.csv","a") as f:
         np.savetxt(f,(kz,E),delimiter=',')
 
+# for parallel code in kz
+def p_main_kz_spectra(p,q,kz_res=100,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5):
+    import sys
+    # get kz from argv
+    args = sys.argv
+    kz_idx = int(args[1])
+    kz = ks[kz_idx]
+    # run program
+    H = soti_block_slab(size=q)
+    # save in file
+    with open("soti_slab_kz_spectrum_data.csv","a") as f:
+        np.savetxt(f,(kz,E),delimiter=',')
+
 if __name__ == "__main__":
     #main_butterfly(qmax=50,nu=0,ucsize=1,t=-1,M=2.3,D1=0.8,D2=0.5)
-    main_ky_spectra(p=1,q=10,ky_res=100,ucsize=3)
-    #main_kz_spectra(p=1,q=10,kz_res=100,ucsize=3)
+    #main_ky_spectra(p=1,q=10,ky_res=100)
+    main_kz_spectra(p=1,q=10,kz_res=1000)

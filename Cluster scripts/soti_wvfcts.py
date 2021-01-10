@@ -124,7 +124,7 @@ def get_wavefunctions(p,q,num_eigs,ucsize=1,zu=0,t=-1,M=2.3,D1=0.8,D2=0.5):
     w_st=np.asarray([w for _,w in sorted(zip(eps_pq,wvfcts_pq.T))])
     w_s=w_st.T
 
-    return w_s
+    return eps_pq, w_s
 
 def normalize_prob(stuff):
     """
@@ -145,7 +145,7 @@ def batch_spins(prob,spin_nos):
         batched_size = int(prob.shape[0]/spin_nos)
         prob_pos = np.zeros((batched_size), dtype = float)
         for i in range(batched_size):
-            batched_sum = np.sum(prob[i:i+spin_nos],axis=0)
+            batched_sum = np.sum(prob[i*spin_nos:(i+1)*spin_nos],axis=0)
             prob_pos[i] = batched_sum
 
     # batch over spin components
@@ -154,7 +154,7 @@ def batch_spins(prob,spin_nos):
         batched_size = int(prob.shape[0]/spin_nos)
         prob_pos = np.zeros((batched_size,vec_nos), dtype = float)
         for i in range(batched_size):
-            batched_sum = np.sum(prob[i:i+spin_nos,:],axis=0)
+            batched_sum = np.sum(prob[i*spin_nos:(i+1)*spin_nos,:],axis=0)
             prob_pos[i,:] = batched_sum
 
     return prob_pos
